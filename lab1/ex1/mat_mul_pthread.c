@@ -3,6 +3,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <malloc.h>
+
+// Define struct for matrix
 typedef struct {
     int id;
     int dim;    // Dimension of matrices
@@ -12,24 +14,41 @@ typedef struct {
     int *rows;  // Num of rows that each thread handles
 } param_t;
 
+/* The main function requires four arguments. 
+ ** Argument 1: The name of the function pMult
+ ** Argument 2: Dimension of the matrices, N.
+ ** Argument 3: The number of threads to use, C.
+ ** Argument 4: A bool to determine if the matrices should be printed or not.
+ **/
 int main(int argc, const char *argv[]){
     if(argc >= 3){
         printf("1. Get parameters from users...\n");
+        // Dimensions of matrices
         int dim = atoi(argv[1]);
+        // Num of threads to run this program
         int num_threads = atoi(argv[2]);
+        // Flag to choose for printing or not printing matrices
         int print_flag;
         if(argc == 4)
             print_flag = atoi(argv[3]);
         else
             print_flag = 0;
+
+        /* Stores the number of rows which each thrtead will have to calculate 
+         * the results.*/
         int num_rows_per_thread[num_threads];
         int i, j;
         int row;
         int col;
+        /* Used to determine which threads will handle which rows.*/
         int t_left = num_threads;
         int r_left = dim;
+        /* Check success of pthread_create or pthread_join */
         long rc;
+        /* Status of threads */
         void *status;
+
+        /* Declare matrices and allocate memory */
         printf("2. Initialize matrices...\n");
         double **matrix_a;
         double **matrix_b;
@@ -37,6 +56,10 @@ int main(int argc, const char *argv[]){
         matrix_a = malloc(dim * sizeof(double *));
         matrix_b = malloc(dim * sizeof(double *));
         result = malloc(dim * sizeof(double *));
+
+        /* 
+         ** for each of the pointeres in the tree matrices we want to allocate     
+         ** storage for the array's of floats */
         for(row = 0; row < dim; ++row) {
             matrix_a[row] = malloc(dim * sizeof(double));
         }
@@ -60,7 +83,9 @@ int main(int argc, const char *argv[]){
         for(row = 0; row < dim; row++)
             for(col = 0; col < dim; col++)
                 result[row][col] = 0;
-	printf("3. Initialize pthreads...\n");
+        
+        /* Initialize pthread and attributes */
+        printf("3. Initialize pthreads...\n");
         pthread_t *thread;
         pthread_attr_t attr;
         thread = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
@@ -72,10 +97,18 @@ int main(int argc, const char *argv[]){
             num_rows_per_thread[i] = r_left / t_left;
             r_left -= num_rows_per_thread[i];
             --t_left;
-	}
+        }
+
+        /* Initialize data for threads and matrices */
         printf("5. Calculating...\n");
+        //////////////////////////////////////////////////////////
+        // TODO: comment out these lines below and write your code
         int rows = dim;
         mul_mat(0, &rows, dim, matrix_a, matrix_b, result);
+
+        //////////////////////////////////////////////////////////
+        
+        /* Print matrices */
         if(print_flag == 1){
             printf("Printing out Matrix A: \n");
             print_matrix( matrix_a, dim );
@@ -86,6 +119,7 @@ int main(int argc, const char *argv[]){
         }
         printf("6. Completed the main program. Exitting now.\n");
         return 1;
+
     }else{
         printf("Usage: ./mat_mul_pthread DIM NUM_THREADS [PRINT_FLAG]\n");
         printf("\t ./mat_mul_pthread 10 2 1\n");
@@ -96,6 +130,7 @@ int main(int argc, const char *argv[]){
 
 void *worker(void *arg){
     param_t *p = (param_t *) arg;
+    //printf("Thread %d: id = %d - num of handled rows = %d\n", p->id, p->id, *p->rows);
     mul_mat(p->id, p->rows, p->dim, p->m_a, p->m_b, p->m_r);
     pthread_exit(0);
 }
@@ -104,6 +139,11 @@ void mul_mat(int id, int *rows, int dim, double **matrix_a, double **matrix_b, d
     int i, k;
     int row, col;
     double sum;
+
+    //////////////////////////////////////////////////////////
+    // TODO
+    // Comment out these line below and write your code with a parallel version
+
     for(row = 0; row < dim; row++){
         for(col = 0; col < dim; col++){
             sum = 0.0;
@@ -113,6 +153,7 @@ void mul_mat(int id, int *rows, int dim, double **matrix_a, double **matrix_b, d
             result[row][col] = sum;
         }
     }
+    //////////////////////////////////////////////////////////
 }
 
 void print_matrix( double **matrix, int dim ) {
