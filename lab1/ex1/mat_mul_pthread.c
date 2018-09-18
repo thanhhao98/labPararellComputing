@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
-#include <malloc.h>
+#include <malloc/malloc.h>
 
 // Define struct for matrix
 typedef struct {
@@ -29,10 +29,18 @@ int main(int argc, const char *argv[]){
         int num_threads = atoi(argv[2]);
         // Flag to choose for printing or not printing matrices
         int print_flag;
-        if(argc == 4)
-            print_flag = atoi(argv[3]);
-        else
+        int parallelCompute;
+        if(argc == 5){
+            print_flag = atoi(argv[4]);
+            parallelCompute = atoi(argv[3]);
+        } else if(argc==4) {
             print_flag = 0;
+            parallelCompute = atoi(argv[3]);
+
+        } else {
+            parallelCompute = 0;
+            print_flag = 0;
+        }
 
         /* Stores the number of rows which each thrtead will have to calculate 
          * the results.*/
@@ -74,11 +82,11 @@ int main(int argc, const char *argv[]){
         
         for (row = 0; row < dim; row++)
             for(col = 0; col < dim; col++)
-                matrix_a[row][col] = rand() % 1000;
+                matrix_a[row][col] = (rand() % 1000)/1000.0;
 
         for (row = 0; row < dim; row++)
             for(col = 0; col < dim; col++)
-                matrix_b[row][col] = rand() % 1000;
+                matrix_b[row][col] = (rand() % 1000)/1000.0;
 
         for(row = 0; row < dim; row++)
             for(col = 0; col < dim; col++)
@@ -101,11 +109,37 @@ int main(int argc, const char *argv[]){
 
         /* Initialize data for threads and matrices */
         printf("5. Calculating...\n");
-        //////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////
         // TODO: comment out these lines below and write your code
-        int rows = dim;
-        mul_mat(0, &rows, dim, matrix_a, matrix_b, result);
-
+        if(parallelCompute){
+            printf("[+] Caculating pararell\n");
+            param_t *data = malloc(num_threads*sizeof(param_t));
+            for(i=0; i < num_threads; i++){
+                data[i].id = i;
+                data[i].m_a = matrix_a;
+                data[i].m_b = matrix_b;
+                data[i].m_r = result;
+                data[i].dim = dim;
+                data[i].rows = num_rows_per_thread;
+                printf("In main, start thread %d\n",data[i].id);
+                int creation_flag = pthread_create(&thread[i], &attr, worker, (void *) &data[i]);
+                if (creation_flag){
+                    printf("ERROR: return code from thread_create() is %d\n", creation_flag);
+                    exit(-1);
+                }
+            }
+            for(i=0; i < num_threads; i++){
+                int join_flag = pthread_join(thread[i], &status);
+                if(join_flag){
+                    printf("ERROR: return code from thread_join() is %d\n", join_flag);
+                    exit(-1);
+                }
+            }
+        } else {
+            printf("[+] Caculating instruction\n");
+            int rows = dim;
+            mul_mat(0, &rows, dim, matrix_a, matrix_b, result);
+        }
         //////////////////////////////////////////////////////////
         
         /* Print matrices */
@@ -130,8 +164,23 @@ int main(int argc, const char *argv[]){
 
 void *worker(void *arg){
     param_t *p = (param_t *) arg;
-    //printf("Thread %d: id = %d - num of handled rows = %d\n", p->id, p->id, *p->rows);
-    mul_mat(p->id, p->rows, p->dim, p->m_a, p->m_b, p->m_r);
+    int i,k,col;
+    int rowFrom = 0;
+    int rowTo = 0;
+    double sum;
+    for(i=0;i<p->id+1;i++){
+        rowTo += p->rows[i];
+    }
+    rowFrom = rowTo - p->rows[p->id];
+    for(i=rowFrom; i<rowTo; i++){
+        for(col = 0; col < p->dim; col++){
+            sum = 0.0;
+            for(k = 0; k < p->dim; k++){
+                sum = sum + (p->m_a[i][k] * p->m_b[k][col]);
+            }
+            p->m_r[i][col] = sum;
+        }
+    }
     pthread_exit(0);
 }
 
@@ -162,7 +211,7 @@ void print_matrix( double **matrix, int dim ) {
     for(row = 0; row < dim; row++) {
         printf("[ ");
         for(col = 0; col < dim; col++) {
-            printf(" %f ", matrix[row][col]);
+            printf(" %3f ", matrix[row][col]);
         }
         printf(" ]\n");
     }
