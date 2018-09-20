@@ -121,7 +121,7 @@ int main(int argc, const char *argv[]){
                 data[i].m_r = result;
                 data[i].dim = dim;
                 data[i].rows = num_rows_per_thread;
-                printf("In main, start thread %d\n",data[i].id);
+                // printf("In main, start thread %d\n",data[i].id);
                 int creation_flag = pthread_create(&thread[i], &attr, worker, (void *) &data[i]);
                 if (creation_flag){
                     printf("ERROR: return code from thread_create() is %d\n", creation_flag);
